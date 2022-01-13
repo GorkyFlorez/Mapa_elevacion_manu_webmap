@@ -1,0 +1,87 @@
+---
+title: "Mapa de elevacion de la Reserva de Manu"
+author: "Ing. Gorky Florez Castillo"
+date: "`r Sys.Date()`"
+output: 
+  flexdashboard::flex_dashboard:
+    orientation: columns
+    logo: PNG/Bio.png
+    source_code: "https://github.com/GorkyFlorez/Aprende_R_desde_Cero_para_SIG"
+    theme: flatly
+---
+```{r setup, include=FALSE}
+library(sf)
+library(spData)
+library(ggplot2)
+library(cowplot)
+library(rcartocolor)
+library(raster)
+library(RStoolbox)
+library(landsat8)
+library(ggspatial)
+library(leaflet)
+library(leaflet.extras)
+library(leaflet.extras2)
+library(leaflet.providers)
+library(leafem)
+library(mapview)
+library(leafsync)
+
+Reservas_Man <- st_read ("SHP/Reservas_Manu.shp")   
+Reservas_Manu  <- st_transform(Reservas_Man,crs = st_crs("+proj=longlat +datum=WGS84 +no_defs"))
+Reservas_Manu1  <- st_transform(Reservas_Man,crs = st_crs("+proj=longlat +datum=WGS84 +no_defs"))
+dem  = raster("raster/manu/1.tif")
+dem2 = raster("raster/manu/2.tif")
+dem3 = raster("raster/manu/3.tif")
+dem4 = raster("raster/manu/4.tif")
+dem5 = raster("raster/manu/5.tif")
+dem6 = raster("raster/manu/6.tif")
+DEM_total <- raster::merge(dem, dem2,dem3, dem4, dem5, dem6)
+
+Reservas_Manu_alt     <- crop(DEM_total, Reservas_Manu)
+Reservas_Manu_alt     <- Reservas_Manu_alt  <- mask(Reservas_Manu_alt , Reservas_Manu1)
+plot(Reservas_Manu_alt)
+slope = terrain(Reservas_Manu_alt, opt = "slope") 
+aspect = terrain(Reservas_Manu_alt, opt = "aspect")
+hill = hillShade(slope, aspect, angle = 40, direction = 270)
+
+#------------------------------------------------------------------------
+pink2 = colorRampPalette(c("#4D9220","#7FBC41","#B8E084","#FFFDBF","#F5F5F5","#F5E7C3","#DCCBA6","#BE802C","#8B5008","#543004"))
+
+brks <- classInt::classIntervals(0:6000,
+                                 style = "fixed",
+                                 fixedBreaks = seq(0,6000,500),
+                                 intervalClosure = "right")
+
+Eleva =mapview::mapview(hill, col.regions = pink2, layer.name = "Hill de Manu", legend =F)+
+          mapview::mapview(Reservas_Manu_alt, col.regions = pink2,layer.name = "DEM", at = brks$brks)
+
+pal <- grDevices::colorRampPalette(RColorBrewer::brewer.pal(15, "Spectral"))
+
+
+brks1 <- classInt::classIntervals(0:6.2,
+                                 style = "fixed",
+                                 fixedBreaks = seq(0,6.2,0.2),
+                                 intervalClosure = "right")
+
+ASPR = mapview::mapview(aspect, col.regions = pal, at = brks$brks1)
+
+
+Hilll = mapview::mapview(hill, col.regions = pink2, layer.name = "Hill de Manu", legend =T)
+
+Poli =mapview::mapview(Reservas_Man)
+
+Total  =sync(Eleva,ASPR,Hilll,  Poli)
+```
+# DEM de la reserva de manu
+
+Column {data-width=1200}
+-----------------------------------------------------------------------
+
+### Mapa de elevacion de Manu
+```{r}
+Total
+```
+
+
+
